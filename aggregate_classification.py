@@ -139,5 +139,5 @@ if __name__ == '__main__':
     import sys
     raw_speeches = pickle.load(open("raw_speeches.pickle", "rb"))
     speechid_to_speaker = pickle.load(open("speechid_to_speaker.pickle", "rb"))
-    speakers_to_analyze = load_list("Girondins and Montagnards New Mod Limit No Robespierre.xlsx")
+    speakers_to_analyze = load_list("Girondins and Montagnards New Mod Limit.xlsx")
     aggregate(speakers_to_analyze, raw_speeches, speechid_to_speaker)
