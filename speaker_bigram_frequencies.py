@@ -37,7 +37,6 @@ def aggregate(speakers_to_analyze, raw_speeches, speechid_to_speaker):
 	for speaker_name in speakers_to_consider:
 		print speaker_name
 		speaker_bigram_frequencies = {}
-		per_bigram = {}
 		party = speakers_to_analyze.loc[speaker_name, "Party"]
 		speech = Counter()
 		for identity in raw_speeches:
@@ -54,17 +53,13 @@ def aggregate(speakers_to_analyze, raw_speeches, speechid_to_speaker):
 					else:
 						speaker_bigram_frequencies[bigram] = {}
 						speaker_bigram_frequencies[bigram][identity] = indv_speech_bigram[bigram]
-					if bigram in per_bigram:
-						per_bigram[bigram] += indv_speech_bigram[bigram]
-					else:
-						per_bigram[bigram] = indv_speech_bigram[bigram]
 		filename_pickle = "" + speaker_name + "bigram_frequencies.pickle"
 		with open(filename_pickle, 'wb') as handle:
 			pickle.dump(speaker_bigram_frequencies, handle, protocol = 0)
 		filename_csv = "" + speaker_name + "bigram_frequencies.csv"
 		w = csv.writer(open(filename_csv, "w"))
 		for key, val in speaker_bigram_frequencies.items():
-			w.writerow([key,val,per_bigram[key]])
+			w.writerow([key,val])
 
 
 if __name__ == '__main__':
