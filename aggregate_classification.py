@@ -24,15 +24,20 @@ import math
 from collections import defaultdict
 from sklearn.linear_model import LogisticRegression
 from sklearn import metrics
-from processing_functions import write_to_excel, load_list, process_excel, remove_diacritic, compute_tfidf, normalize_dicts
+from processing_functions import write_to_excel, load_list, process_excel, remove_diacritic, compute_tfidf, normalize_dicts, store_to_pickle
 from lr_classification import run_train_classification, run_test_classification
 
+# Regex used to find date of session
 date_regex = '([0-9]{4}-[0-9]{2}-[0-9]{1,2})'
 
 
 def aggregate(speakers_to_analyze, raw_speeches, speechid_to_speaker):
-	speaker_names = set()
+	# Dataframe to keep track of the speakers we care about
 	speakers_to_consider = []
+	# Reformats speakers_to_analyze by removing accents in order to match speakers to those in raw_speeches
+	# and speechid_to_speaker
+	for speaker in speakers_to_analyze.index.values:
+		speakers_to_consider.append(remove_diacritic(speaker).decode('utf-8'))
 
 	# Initialize various data frames for export to the classification script
 	train_total_freq_unigram = {}
@@ -41,6 +46,7 @@ def aggregate(speakers_to_analyze, raw_speeches, speechid_to_speaker):
 	test_total_freq_bigram = {}
 	train_number_speeches = 0
 	test_number_speeches = 0
+	
 	# Keeps track of which speeches contain the given bigram
 	train_speeches_bigram = collections.defaultdict(dict)
 	test_speeches_bigram = collections.defaultdict(dict)
@@ -56,16 +62,15 @@ def aggregate(speakers_to_analyze, raw_speeches, speechid_to_speaker):
 	gir_docs = {}
 	mont_docs = {}
 
-	for speaker in speakers_to_analyze.index.values:
-		speakers_to_consider.append(remove_diacritic(speaker).decode('utf-8'))
-
 	for speaker_name in speakers_to_consider:
 		print speaker_name
 		party = speakers_to_analyze.loc[speaker_name, "Party"]
 		speech = Counter()
+		# Variable to keep track of a given speaker's number of speeches
 		speech_num = 0
 		for identity in raw_speeches:
 			date = re.findall(date_regex, str(identity))[0]
+			# Only look at speeches within the date frame and that are from the speaker of interest
 			if (date >= "1792-09-20") and (date <= "1793-06-02") and (speaker_name == speechid_to_speaker[identity]):
 				# Only looking at speeches with substance, so greater than 100 characters
 				if len(raw_speeches[identity]) >= 100:
@@ -94,38 +99,26 @@ def aggregate(speakers_to_analyze, raw_speeches, speechid_to_speaker):
 					speech_num += 1
 		
 	# Write all relevant data objects and values to memory to use when running classification
-	with open("speechid_to_speaker_store.pickle", 'wb') as handle:
-		pickle.dump(speechid_to_speaker, handle, protocol = 0)
-	speechid_to_speaker = None
-	with open("speakers_to_analyze_store.pickle", 'wb') as handle:
-		pickle.dump(speakers_to_analyze, handle, protocol = 0)
+	store_to_pickle(speakers_to_analyze, "speakers_to_analyze.pickle")
+	
+	# Set these dataframes to None to conserve memory
 	speakers_to_analyze = None
+	speechid_to_speaker = None
 	raw_speeches = None
 
-	with open("train_speeches_bigram.pickle", 'wb') as handle:
-		pickle.dump(train_speeches_bigram, handle, protocol = 0)
-	with open("train_speeches_unigram.pickle", 'wb') as handle:
-		pickle.dump(train_speeches_unigram, handle, protocol = 0)
-	with open("train_total_freq_bigram.pickle", 'wb') as handle:
-		pickle.dump(train_total_freq_bigram, handle, protocol = 0)
-	with open("train_total_freq_unigram.pickle", 'wb') as handle:
-		pickle.dump(train_total_freq_unigram, handle, protocol = 0)
-	
-	with open("bigram_doc_freq.pickle", 'wb') as handle:
-		pickle.dump(bigram_doc_freq, handle, protocol = 0)
-	with open("unigram_doc_freq.pickle", 'wb') as handle:
-		pickle.dump(unigram_doc_freq, handle, protocol = 0)
-	with open("train_number_speeches.pickle", 'wb') as handle:
-		pickle.dump(train_number_speeches, handle, protocol = 0)
+	store_to_pickle(train_speeches_bigram, "train_speeches_bigram.pickle")
+	store_to_pickle(train_speeches_unigram, "train_speeches_unigram.pickle")
+	store_to_pickle(train_total_freq_bigram, "train_total_freq_bigram.pickle")
+	store_to_pickle(train_total_freq_unigram, "train_total_freq_unigram.pickle")
 
-	with open("test_speeches_bigram.pickle", 'wb') as handle:
-		pickle.dump(test_speeches_bigram, handle, protocol = 0)
-	with open("test_speeches_unigram.pickle", 'wb') as handle:
-		pickle.dump(test_speeches_unigram, handle, protocol = 0)
-	with open("test_total_freq_bigram.pickle", 'wb') as handle:
-		pickle.dump(test_total_freq_bigram, handle, protocol = 0)
-	with open("test_total_freq_unigram.pickle", 'wb') as handle:
-		pickle.dump(test_total_freq_unigram, handle, protocol = 0)
+	store_to_pickle(bigram_doc_freq, "bigram_doc_freq.pickle")
+	store_to_pickle(unigram_doc_freq, "unigram_doc_freq.pickle")
+	store_to_pickle(train_number_speeches, "train_number_speeches.pickle")
+
+	store_to_pickle(test_speeches_bigram, "test_speeches_bigram.pickle")
+	store_to_pickle(test_speeches_unigram, "test_speeches_unigram.pickle")
+	store_to_pickle(test_total_freq_bigram, "test_total_freq_bigram.pickle")
+	store_to_pickle(test_total_freq_unigram, "test_total_freq_unigram.pickle")
 
 # Augments a relevant dictionary to keep track of counts of various bigrams and unigrams
 def augment(dictionary, ngram):

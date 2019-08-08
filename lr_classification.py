@@ -21,6 +21,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split, cross_val_score
 from processing_functions import compute_tfidf
 from xgboost import XGBClassifier
+from processing_functions import store_to_pickle, write_to_csv
 
 
 train_cols = []
@@ -37,15 +38,12 @@ def run_train_classification(bigram_speeches, unigram_speeches, bigram_freq, uni
 	model.fit(train.get_values(), train_classification)
 	cv_scores = cross_val_score(model, train.get_values(), train_classification, cv = 10)
 
-	### xgboost
+	### XGBoost
 	"""model = XGBClassifier()
 	model.fit(train.get_values(), train_classification)
 	cv_scores = cross_val_score(model, train.get_values(), train_classification, cv = 10)"""
 	
 	print "Training CV Score: %f" % np.mean(cv_scores)
-
-
-	#print ("Training CV Score: " + str(metrics.accuracy_score(train_classification, predicted)))
 
 	train_classification = pd.DataFrame(train_classification)
 	speeches = pd.DataFrame(speeches, columns = ['Speechid'])
@@ -65,8 +63,9 @@ def run_train_classification(bigram_speeches, unigram_speeches, bigram_freq, uni
 	columns_to_return = train.columns
 	train = None
 
-
+	# Returns the model as well as the columns of interest for the model
 	return [model, columns_to_return]
+
 
 # Runs the training model on the test set and generates predictions
 def run_test_classification(model, train_columns, bigram_speeches, unigram_speeches, bigram_freq, unigram_freq, bigram_doc_freq, unigram_doc_freq, num_speeches):
@@ -95,7 +94,6 @@ def run_test_classification(model, train_columns, bigram_speeches, unigram_speec
 	predictions = model.predict(test.get_values())
 	predicted_values = pd.DataFrame(predictions, columns = ['Predicted'])
 	write_to = pd.ExcelWriter("predictions.xlsx")
-	#real_pred.to_excel(write_to, 'Sheet1')
 	write_to.save()
 
 	# Develops and prints the confusion matrix
@@ -122,10 +120,9 @@ def data_clean(iteration, train_columns, bigram_speeches, unigram_speeches, bigr
 	speeches = []
 	speakers = []
 
-	speechid_to_speaker = pickle.load(open("speechid_to_speaker_store.pickle", "rb"))
-	speakers_to_analyze = pickle.load(open("speakers_to_analyze_store.pickle", "rb"))
-	### Should I do this once for all the data and then split it into test and train? That way all the data is based on the same bigrams. Or is that
-	### bad because then the training data is connected to the test data via the tfidf calculations?
+	speechid_to_speaker = pickle.load(open("speechid_to_speaker.pickle", "rb"))
+	speakers_to_analyze = pickle.load(open("speakers_to_analyze.pickle", "rb"))
+
 	for speechid in bigram_speeches:
 		speaker = speechid_to_speaker[speechid]
 
@@ -142,8 +139,8 @@ def data_clean(iteration, train_columns, bigram_speeches, unigram_speeches, bigr
 		# Analysis accounts for bigrams and unigrams
 		if iteration == "train":
 			# Restricting features according to how many times they appear
-			bigram_input = {k:v for k,v in bigram_speeches[speechid].items() if (bigram_freq[k] >= 20)}
-			unigram_input = {k:v for k,v in unigram_speeches[speechid].items() if (unigram_freq[k] >= 62)}
+			bigram_input = {k:v for k,v in bigram_speeches[speechid].items() if (bigram_freq[k] >= 17)}
+			unigram_input = {k:v for k,v in unigram_speeches[speechid].items() if (unigram_freq[k] >= 55)}
 			
 			bigram_scores = compute_tfidf(bigram_input, num_speeches, bigram_doc_freq)
 			unigram_scores = compute_tfidf(unigram_input, num_speeches, unigram_doc_freq)
@@ -189,7 +186,7 @@ if __name__ == '__main__':
 	unigram_doc_freq = pickle.load(open("unigram_doc_freq.pickle", "rb"))
 	train_number_speeches = pickle.load(open("train_number_speeches.pickle", "rb"))
 
-
+	# Train the model
 	model, train_columns = run_train_classification(train_speeches_bigram, train_speeches_unigram, train_total_freq_bigram, train_total_freq_unigram, bigram_doc_freq, unigram_doc_freq, train_number_speeches)
 
 	train_speeches_bigram = None
@@ -203,11 +200,10 @@ if __name__ == '__main__':
 	test_speeches_bigram = pickle.load(open("test_speeches_bigram.pickle", "rb"))
 	test_speeches_unigram = pickle.load(open("test_speeches_unigram.pickle", "rb"))
 
-
+	# Test the model
 	real_pred = run_test_classification(model, train_columns, test_speeches_bigram, test_speeches_unigram, test_total_freq_bigram, test_total_freq_unigram, bigram_doc_freq, unigram_doc_freq, train_number_speeches)
 
-	with open("real_pred.pickle", 'wb') as handle:
-		pickle.dump(real_pred, handle, protocol = 0)
+	store_to_pickle(real_pred, "real_pred.pickle")
 
 	# Build comprehensive dataset with speeches to see why a speech may have been misclassified
 	real_pred = pd.concat([real_pred, pd.DataFrame(columns = ['Speech Text'])])

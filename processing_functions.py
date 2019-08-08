@@ -12,6 +12,7 @@ import pandas as pd
 from pandas import *
 import numpy as np
 import math
+import csv
 
 
 # Removes accents from the input parameter
@@ -34,6 +35,17 @@ def write_to_excel(df, filename):
 	writer = pd.ExcelWriter(filename)
 	df.to_excel(writer, 'Sheet1')
 	writer.save()
+
+
+def write_to_csv(df, filename):
+	w = csv.writer(open(filename, "w"))
+	for key, val in df.items():
+		w.writerow([key,val])
+
+# Stores a pickle file of the passed in dataframe
+def store_to_pickle(file_to_store, filename):
+	with open(filename, 'wb') as handle:
+		pickle.dump(file_to_store, handle, protocol = 0)
 
 # Loads an unspecified list of speakers into a pandas list from Excel
 def load_list(speakernames):
